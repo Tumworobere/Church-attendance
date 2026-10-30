@@ -15,8 +15,8 @@
     <a href="{% url 'dashboard' %}" class="brand">
       <img src="{% static 'registry/img/logo.png' %}" alt="" width="60" height="60">
       <span class="stack" style="gap:2px">
-        <span class="eyebrow">{% if CHURCH_BRANCH %}{{ CHURCH_BRANCH }} · {% endif %}Member &amp; attendance register</span>
         <h1>{{ CHURCH_NAME }}</h1>
+        <span class="eyebrow">{% if CHURCH_BRANCH %}{{ CHURCH_BRANCH }} · {% endif %}Member &amp; attendance register</span>
       </span>
     </a>
     {% if user.is_authenticated %}
