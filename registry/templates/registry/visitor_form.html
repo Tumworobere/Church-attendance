@@ -1,0 +1,19 @@
+{% extends "registry/base.html" %}
+{% block title %}{% if visitor %}{{ visitor.name }}{% else %}Register visitor{% endif %} · {{ CHURCH_NAME }}{% endblock %}
+{% block content %}
+<div class="panel stack">
+  <div>
+    <h2>{% if visitor %}{{ visitor.name }}{% else %}Register first-time visitor{% endif %}</h2>
+    {% if service %}<p class="muted" style="margin:4px 0 0">At {{ service }}</p>{% endif %}
+  </div>
+  <form method="post" class="stack">{% csrf_token %}
+    {% include "registry/_form_fields.html" with wide="name address notes" %}
+    <div class="row">
+      {% if visitor %}<a class="btn danger" href="{% url 'visitor_delete' visitor.pk %}">Delete visitor</a>{% endif %}
+      <span class="spacer"></span>
+      <a class="btn" href="{% if service %}{% url 'checkin' service.pk %}{% else %}{% url 'visitor_list' %}{% endif %}">Cancel</a>
+      <button class="primary">{% if visitor %}Save changes{% else %}Register visitor{% endif %}</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

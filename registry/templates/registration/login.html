@@ -1,0 +1,15 @@
+{% extends "registry/base.html" %}
+{% block title %}Sign in · {{ CHURCH_NAME }}{% endblock %}
+{% block content %}
+<div class="panel stack login">
+  <h2>Sign in</h2>
+  <p class="muted" style="margin:0">Ushers and church staff sign in to record members and attendance.</p>
+  <form method="post" class="stack">{% csrf_token %}
+    {% if form.errors %}<ul class="errorlist"><li>That username and password didn't match. Try again.</li></ul>{% endif %}
+    <label class="field">Username {{ form.username }}</label>
+    <label class="field">Password {{ form.password }}</label>
+    <input type="hidden" name="next" value="{{ next }}">
+    <button class="primary">Sign in</button>
+  </form>
+</div>
+{% endblock %}

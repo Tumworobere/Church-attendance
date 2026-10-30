@@ -1,0 +1,44 @@
+{% extends "registry/base.html" %}
+{% block title %}Members · {{ CHURCH_NAME }}{% endblock %}
+{% block content %}
+<div class="panel stack">
+  <form method="get" class="row">
+    <input type="search" name="q" value="{{ q }}" placeholder="Search name, phone, email or cell" style="flex:1 1 220px">
+    <select name="ministry" style="width:auto;flex:0 1 200px" onchange="this.form.submit()">
+      <option value="">All ministries</option>
+      {% for m in ministries %}<option value="{{ m.pk }}" {% if selected_ministry == m.pk|stringformat:'s' %}selected{% endif %}>{{ m }}</option>{% endfor %}
+    </select>
+    <select name="status" style="width:auto;flex:0 1 140px" onchange="this.form.submit()">
+      <option value="">All statuses</option>
+      {% for v, label in statuses %}<option value="{{ v }}" {% if selected_status == v %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <button>Search</button>
+    <span class="spacer"></span>
+    <a class="btn" href="{% url 'member_import' %}">Upload members</a>
+    <a class="btn primary" href="{% url 'member_new' %}">+ Register member</a>
+  </form>
+
+  {% if not total %}
+    <div class="empty"><strong>Your register is empty</strong>Add your first member with “Register member”, or <a href="{% url 'member_import' %}">upload a list from a spreadsheet</a>.</div>
+  {% elif not rows %}
+    <div class="empty">No members match these filters. <a href="{% url 'member_list' %}">Clear filters</a></div>
+  {% else %}
+    <p class="muted" style="margin:0;font-size:.85rem">{{ rows|length }} of {{ total }} members. <a href="{% url 'export_members' %}">Export all as CSV</a></p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Name</th><th>Phone</th><th>Ministry</th><th>Cell</th><th>Status</th><th class="r">Last 8 services</th></tr></thead>
+      <tbody>
+      {% for r in rows %}{% with m=r.member %}
+        <tr>
+          <td><a class="name" href="{% url 'member_edit' m.pk %}">{{ m.full_name }}</a></td>
+          <td class="num">{{ m.phone|default:"—" }}</td>
+          <td>{{ m.ministry|default:"—" }}</td>
+          <td>{{ m.cell|default:"—" }}</td>
+          <td><span class="chip {% if m.status != 'active' %}grey{% endif %}">{{ m.get_status_display }}</span></td>
+          <td class="r">{% if r.of %}{{ r.attended }}/{{ r.of }}{% else %}—{% endif %}</td>
+        </tr>
+      {% endwith %}{% endfor %}
+      </tbody>
+    </table></div>
+  {% endif %}
+</div>
+{% endblock %}

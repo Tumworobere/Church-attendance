@@ -1,0 +1,40 @@
+{% extends "registry/base.html" %}
+{% block title %}Upload {{ imp.plural }} · {{ CHURCH_NAME }}{% endblock %}
+{% block content %}
+<div class="stack">
+  <div class="panel stack">
+    <h2>Upload {{ imp.plural }}</h2>
+    <ol class="muted" style="margin:0;padding-left:1.2em">
+      <li><a href="{% url template_url %}">Download the template</a> and open it in Excel or Google Sheets.</li>
+      <li>Fill in one {{ imp.noun }} per row below the column names. Only the columns marked * are required.</li>
+      <li>Save it as CSV (in Excel: File → Save As → “CSV UTF-8”) and upload it here.</li>
+    </ol>
+    {% if errors %}
+    <ul class="messages" style="margin:0"><li class="error stack" style="gap:6px">
+      <strong>Nothing was imported. Fix these and upload again:</strong>
+      <ul class="errorlist">{% for e in errors|slice:":50" %}<li>{{ e }}</li>{% endfor %}</ul>
+      {% if errors|length > 50 %}<span class="muted">…and {{ errors|length|add:"-50" }} more.</span>{% endif %}
+    </li></ul>
+    {% endif %}
+    <form method="post" enctype="multipart/form-data" class="row">{% csrf_token %}
+      <input type="file" name="file" accept=".csv,text/csv" required style="flex:1 1 260px">
+      <a class="btn" href="{% url list_url %}">Cancel</a>
+      <button class="primary">Upload</button>
+    </form>
+    <p class="muted" style="margin:0;font-size:.85rem">If any row has a problem, nothing is imported, so you can fix the file and upload it again.
+      Rows for people already in the register (same name and phone) are skipped.</p>
+  </div>
+
+  <div class="panel stack">
+    <h2>Columns</h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Column</th><th>What to enter</th></tr></thead>
+      <tbody>
+      {% for column, required, help in guide %}
+        <tr><td>{{ column }}{% if required %} *{% endif %}</td><td>{% if required %}Required. {% endif %}{{ help }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+  </div>
+</div>
+{% endblock %}

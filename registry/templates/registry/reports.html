@@ -1,0 +1,46 @@
+{% extends "registry/base.html" %}
+{% block title %}Reports · {{ CHURCH_NAME }}{% endblock %}
+{% block content %}
+<div class="stack">
+  <div class="panel stack">
+    <form method="get" class="row bottom">
+      <label class="field" style="flex:0 1 180px">{{ form.start.label }} {{ form.start }}</label>
+      <label class="field" style="flex:0 1 180px">{{ form.end.label }} {{ form.end }}</label>
+      <button>Show</button>
+      <span class="spacer"></span>
+      <a class="btn" href="{% url 'export_members' %}">Members CSV</a>
+      <a class="btn" href="{% url 'export_visitors' %}">Visitors CSV</a>
+      <a class="btn" href="{% url 'export_attendance' %}?start={{ start|date:'Y-m-d' }}&end={{ end|date:'Y-m-d' }}">Attendance CSV</a>
+    </form>
+    <div class="tiles">
+      <div class="tile"><span class="eyebrow">Services</span><span class="big">{{ summary.services }}</span></div>
+      <div class="tile"><span class="eyebrow">Total attendance</span><span class="big">{{ summary.total }}</span></div>
+      <div class="tile"><span class="eyebrow">Average per service</span><span class="big">{{ summary.average }}</span></div>
+      <div class="tile"><span class="eyebrow">Highest attendance</span><span class="big">{{ summary.peak }}</span></div>
+      <div class="tile"><span class="eyebrow">Visitor attendances</span><span class="big">{{ summary.visitors }}</span></div>
+    </div>
+  </div>
+
+  <div class="panel stack"><h2>Services, {{ start|date:"j M Y" }} to {{ end|date:"j M Y" }}</h2>
+    {% if services %}<div class="table-wrap"><table>
+      <thead><tr><th>Date</th><th>Service</th><th class="r">Members</th><th class="r">Visitors</th><th class="r">Extra</th><th class="r">Total</th></tr></thead>
+      <tbody>{% for s in services %}<tr><td class="num"><a class="name" href="{% url 'checkin' s.pk %}">{{ s.date|date:"D j M Y" }}</a></td><td>{{ s.service_type }}</td><td class="r">{{ s.n_members }}</td><td class="r">{{ s.n_visitors }}</td><td class="r">{{ s.extra_headcount }}</td><td class="r"><b>{{ s.total }}</b></td></tr>{% endfor %}</tbody>
+    </table></div>{% else %}<div class="empty">No services recorded in this period.</div>{% endif %}
+  </div>
+
+  <div class="grid2">
+    <div class="panel stack"><h2>Member attendance</h2>
+      {% if rates and services %}<div class="table-wrap"><table>
+        <thead><tr><th>Member</th><th class="r">Attended</th><th class="r">Rate</th></tr></thead>
+        <tbody>{% for r in rates %}<tr><td><a class="name" href="{% url 'member_edit' r.member.pk %}">{{ r.member.full_name }}</a></td><td class="r">{{ r.attended }}/{{ r.of }}</td>
+          <td class="r">{% if r.pct is None %}<span class="chip grey">—</span>{% else %}<span class="chip {% if r.pct >= 75 %}{% elif r.pct >= 40 %}gold{% else %}red{% endif %}">{{ r.pct }}%</span>{% endif %}</td></tr>{% endfor %}</tbody>
+      </table></div>{% else %}<div class="empty">Attendance rates appear once you have members and recorded services.</div>{% endif %}
+    </div>
+    <div class="panel stack">
+      <div><h2>Missed 3+ services in a row</h2><p class="muted" style="margin:4px 0 0;font-size:.85rem">Active members absent from the most recent services. A good list for pastoral calls.</p></div>
+      {% if absent %}<ul class="list-plain">{% for a in absent %}<li><span><a href="{% url 'member_edit' a.member.pk %}">{{ a.member.full_name }}</a><br><span class="muted num" style="font-size:.82rem">{{ a.member.phone|default:"No phone" }}</span></span><span class="chip red">{{ a.missed }} missed</span></li>{% endfor %}</ul>
+      {% else %}<div class="empty">No active member has missed three services in a row.</div>{% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

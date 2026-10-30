@@ -1,0 +1,25 @@
+{% extends "registry/base.html" %}
+{% block title %}Check-in · {{ CHURCH_NAME }}{% endblock %}
+{% block content %}
+<div class="stack">
+  <div class="panel stack">
+    <div><h2>Open a service register</h2><p class="muted" style="margin:4px 0 0">Pick the date and service. If it's already open on another usher's device, you'll join the same register.</p></div>
+    <form method="post" class="row bottom">{% csrf_token %}
+      <label class="field" style="flex:1 1 160px">Date {{ form.date }}</label>
+      <label class="field" style="flex:1 1 200px">Service {{ form.service_type }}</label>
+      <button class="primary">Open register</button>
+    </form>
+    {{ form.errors }}
+    {% if today_services %}<div class="row"><span class="eyebrow">Open today:</span>{% for s in today_services %}<a class="btn small" href="{% url 'checkin' s.pk %}">{{ s.service_type }}</a>{% endfor %}</div>{% endif %}
+  </div>
+  <div class="panel stack">
+    <h2>Recent services</h2>
+    {% if recent %}
+    <div class="table-wrap"><table>
+      <thead><tr><th>Date</th><th>Service</th><th class="r">Members</th><th class="r">Visitors</th><th class="r">Extra</th><th class="r">Total</th></tr></thead>
+      <tbody>{% for s in recent %}<tr><td class="num"><a class="name" href="{% url 'checkin' s.pk %}">{{ s.date|date:"D j M Y" }}</a></td><td>{{ s.service_type }}</td><td class="r">{{ s.n_members }}</td><td class="r">{{ s.n_visitors }}</td><td class="r">{{ s.extra_headcount }}</td><td class="r"><b>{{ s.total }}</b></td></tr>{% endfor %}</tbody>
+    </table></div>
+    {% else %}<div class="empty">No services yet. Open your first register above.</div>{% endif %}
+  </div>
+</div>
+{% endblock %}

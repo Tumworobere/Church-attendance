@@ -1,0 +1,11 @@
+{% extends "registry/base.html" %}
+{% block content %}
+<div class="panel stack" style="max-width:520px">
+  <h2>Delete this {{ kind }}?</h2>
+  <p style="margin:0"><b>{{ object }}</b> will be removed permanently{% if kind == 'member' %}, along with their attendance history{% endif %}{% if kind == 'service' %} (every check-in for this service){% endif %}. This can't be undone.</p>
+  <form method="post" class="row end">{% csrf_token %}
+    <a class="btn" href="{% url cancel pk %}">Cancel</a>
+    <button class="primary" style="background:var(--danger);border-color:var(--danger)">Delete {{ kind }}</button>
+  </form>
+</div>
+{% endblock %}

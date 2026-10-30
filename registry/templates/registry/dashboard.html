@@ -1,0 +1,43 @@
+{% extends "registry/base.html" %}
+{% block content %}
+<div class="stack">
+  <div class="tiles">
+    <div class="tile"><span class="eyebrow">Active members</span><span class="big">{{ active_count }}</span><span class="sub">{{ member_total }} registered in total</span></div>
+    <div class="tile"><span class="eyebrow">Last service</span><span class="big">{{ last_service.total|default:"—" }}</span><span class="sub">{% if last_service %}{{ last_service.service_type }}, {{ last_service.date|date:"j M Y" }}{% else %}No services recorded yet{% endif %}</span></div>
+    <div class="tile"><span class="eyebrow">Average attendance</span><span class="big">{{ average|default_if_none:"—" }}</span><span class="sub">{% if average_over %}Over the last {{ average_over }} service{{ average_over|pluralize }}{% else %}Needs at least one service{% endif %}</span></div>
+    <div class="tile"><span class="eyebrow">New visitors</span><span class="big">{{ new_visitors }}</span><span class="sub">First visit in {{ today|date:"F" }}</span></div>
+    <div class="tile"><span class="eyebrow">Follow-ups pending</span><span class="big">{{ pending_count }}</span><span class="sub">Visitors not yet contacted</span></div>
+  </div>
+
+  <div class="panel stack">
+    <div class="row"><h2>Attendance, last 12 services</h2><span class="spacer"></span>
+      <div class="legend"><span><i style="background:var(--accent)"></i>Members</span><span><i style="background:var(--gold)"></i>Visitors</span><span><i style="background:var(--muted)"></i>Extra headcount</span></div>
+    </div>
+    <div class="chart">
+    {% if chart %}
+      <svg viewBox="0 0 {{ chart.width }} {{ chart.height }}" role="img" aria-label="Attendance per service">
+        {% for t in chart.ticks %}<line class="grid" x1="{{ chart.left }}" x2="{{ chart.right_x }}" y1="{{ t.y }}" y2="{{ t.y }}"/><text x="{{ chart.left|add:'-8' }}" y="{{ t.y|add:'4' }}" text-anchor="end">{{ t.value }}</text>{% endfor %}
+        {% for b in chart.bars %}
+          {% for s in b.segments %}<rect class="{{ s.css }}" x="{{ b.x }}" y="{{ s.y }}" width="{{ b.w }}" height="{{ s.h }}"><title>{{ s.value }} {{ s.css }}</title></rect>{% endfor %}
+          <text class="total" x="{{ b.cx }}" y="{{ b.label_y }}" text-anchor="middle">{{ b.total }}</text>
+          <text x="{{ b.cx }}" y="{{ chart.date_y }}" text-anchor="middle">{{ b.date|date:"j M" }}</text>
+        {% endfor %}
+      </svg>
+    {% else %}
+      <div class="empty"><strong>No services recorded yet</strong>Open a register on the Check-in tab to start recording attendance.<a class="btn primary" href="{% url 'service_open' %}">Go to check-in</a></div>
+    {% endif %}
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="panel stack"><h2>Birthdays this month</h2>
+      {% if birthdays %}<ul class="list-plain">{% for m in birthdays %}<li><a href="{% url 'member_edit' m.pk %}">{{ m.full_name }}</a><span class="muted num">{{ m.date_of_birth|date:"j M" }}</span></li>{% endfor %}</ul>
+      {% else %}<div class="empty">No birthdays recorded for this month. Add dates of birth to member records to see them here.</div>{% endif %}
+    </div>
+    <div class="panel stack"><h2>Visitors to follow up</h2>
+      {% if pending %}<ul class="list-plain">{% for v in pending %}<li><span><a href="{% url 'visitor_edit' v.pk %}">{{ v.name }}</a><br><span class="muted num" style="font-size:.82rem">{{ v.phone|default:"No phone" }}</span></span><span class="muted">{{ v.first_visit|date:"j M Y" }}</span></li>{% endfor %}</ul>
+      {% else %}<div class="empty">Everyone has been followed up. New first-time visitors will appear here.</div>{% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

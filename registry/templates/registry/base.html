@@ -1,0 +1,46 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ CHURCH_NAME }}{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,650&family=Figtree:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="{% static 'registry/style.css' %}">
+  <link rel="icon" type="image/png" href="{% static 'registry/img/logo-64.png' %}">
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a href="{% url 'dashboard' %}" class="brand">
+      <img src="{% static 'registry/img/logo.png' %}" alt="" width="60" height="60">
+      <span class="stack" style="gap:2px">
+        <span class="eyebrow">{% if CHURCH_BRANCH %}{{ CHURCH_BRANCH }} · {% endif %}Member &amp; attendance register</span>
+        <h1>{{ CHURCH_NAME }}</h1>
+      </span>
+    </a>
+    {% if user.is_authenticated %}
+    <div class="row">
+      <span class="muted">{{ user.get_username }}</span>
+      {% if user.is_staff %}<a class="btn small" href="{% url 'admin:index' %}">Admin</a>{% endif %}
+      <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="small">Log out</button></form>
+    </div>
+    {% endif %}
+  </header>
+  {% if user.is_authenticated %}
+  {% with n=request.resolver_match.url_name %}
+  <nav class="tabs">
+    <a href="{% url 'dashboard' %}" class="{% if n == 'dashboard' %}on{% endif %}">Dashboard</a>
+    <a href="{% url 'service_open' %}" class="{% if n in 'service_open checkin service_delete visitor_new' %}on{% endif %}">Check-in</a>
+    <a href="{% url 'member_list' %}" class="{% if n|slice:':6' == 'member' %}on{% endif %}">Members</a>
+    <a href="{% url 'visitor_list' %}" class="{% if n == 'visitor_list' or n == 'visitor_edit' or n == 'visitor_delete' or n == 'visitor_import' %}on{% endif %}">Visitors</a>
+    <a href="{% url 'reports' %}" class="{% if n == 'reports' %}on{% endif %}">Reports</a>
+  </nav>
+  {% endwith %}
+  {% endif %}
+  {% if messages %}<ul class="messages">{% for m in messages %}<li class="{{ m.tags }}">{{ m }}</li>{% endfor %}</ul>{% endif %}
+  {% block content %}{% endblock %}
+</div>
+{% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,14 @@
+<div class="form-grid">
+{% for field in form %}
+  {% if field.widget_type == 'checkbox' %}
+  <label class="row full" style="font-weight:600">{{ field }} {{ field.label }}</label>
+  {% else %}
+  <label class="field {% if field.name in wide %}full{% endif %}">{{ field.label }}{% if field.field.required %} *{% endif %}
+    {{ field }}
+    {% if field.help_text %}<span class="helptext">{{ field.help_text }}</span>{% endif %}
+    {{ field.errors }}
+  </label>
+  {% endif %}
+{% endfor %}
+</div>
+{{ form.non_field_errors }}

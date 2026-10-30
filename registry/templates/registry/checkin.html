@@ -1,0 +1,95 @@
+{% extends "registry/base.html" %}
+{% block title %}{{ service }} · {{ CHURCH_NAME }}{% endblock %}
+{% block content %}
+<div class="stack">
+  <div class="panel stack">
+    <div class="row bottom">
+      <div><span class="eyebrow">Register open</span><h2>{{ service.service_type }} · {{ service.date|date:"l j M Y" }}</h2></div>
+      <span class="spacer"></span>
+      <div class="counts">
+        <div class="count"><b id="c-members">{{ counts.members }}</b><span>Members</span></div>
+        <div class="count"><b>{{ counts.visitors }}</b><span>Visitors</span></div>
+        <form method="post" action="{% url 'update_extra' service.pk %}" class="row bottom" style="gap:6px">{% csrf_token %}
+          <label class="field" style="width:110px" title="Children or guests not registered individually">Extra headcount
+            <input type="number" min="0" name="extra_headcount" value="{{ service.extra_headcount }}" onchange="this.form.submit()"></label>
+          <noscript><button class="small">Save</button></noscript>
+        </form>
+        <div class="count total"><b id="c-total">{{ counts.total }}</b><span>Total</span></div>
+      </div>
+    </div>
+    <div class="row end">
+      <a class="btn small" href="{% url 'service_open' %}">Switch service</a>
+      <a class="btn small danger" href="{% url 'service_delete' service.pk %}">Delete this service</a>
+    </div>
+  </div>
+
+  <div class="panel stack">
+    <form method="get" class="row">
+      <input type="search" name="q" value="{{ q }}" placeholder="Search by name, phone or cell" style="flex:1 1 240px" autofocus>
+      <input type="hidden" name="show" value="{{ show }}">
+      <button>Search</button>
+      <div class="seg">
+        <a href="?show=all&q={{ q|urlencode }}" class="{% if show == 'all' %}on{% endif %}">All</a>
+        <a href="?show=out&q={{ q|urlencode }}" class="{% if show == 'out' %}on{% endif %}">Not yet</a>
+        <a href="?show=in&q={{ q|urlencode }}" class="{% if show == 'in' %}on{% endif %}">Present</a>
+      </div>
+      <a class="btn" href="{% url 'visitor_new' %}?service={{ service.pk }}">+ First-time visitor</a>
+    </form>
+
+    <div>
+    {% for m in members %}
+      <div class="person">
+        <span class="avatar">{{ m.initials }}</span>
+        <div class="who"><div class="n">{{ m.full_name }}</div>
+          <div class="d">{% if m.cell %}{{ m.cell }} cell · {% endif %}{% if m.ministry %}{{ m.ministry }} · {% endif %}{{ m.phone|default:"Member" }}</div></div>
+        <form method="post" action="{% url 'toggle_attendance' service.pk m.pk %}" class="js-toggle">{% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          {% if m.pk in present_ids %}<button class="toggle on" aria-pressed="true">✓ Present</button>{% else %}<button class="toggle" aria-pressed="false">Check in</button>{% endif %}
+        </form>
+      </div>
+    {% empty %}
+      {% if has_members %}<div class="empty">No one matches this search or filter.</div>
+      {% else %}<div class="empty"><strong>No members registered yet</strong>Register members first, or add a first-time visitor.<a class="btn primary" href="{% url 'member_new' %}">+ Register member</a></div>{% endif %}
+    {% endfor %}
+
+    {% if visitors and show != 'out' %}
+      <div class="eyebrow" style="padding:14px 4px 4px">Visitors at this service</div>
+      {% for v in visitors %}
+      <div class="person">
+        <span class="avatar v">{{ v.initials }}</span>
+        <div class="who"><div class="n"><a class="name" style="color:inherit" href="{% url 'visitor_edit' v.pk %}">{{ v.name }}</a></div>
+          <div class="d">{% if v.first_visit == service.date %}First visit{% else %}Returning visitor{% endif %}{% if v.phone %} · {{ v.phone }}{% endif %}</div></div>
+        <form method="post" action="{% url 'remove_visitor_attendance' service.pk v.pk %}">{% csrf_token %}<button class="small ghost">Remove</button></form>
+      </div>
+      {% endfor %}
+    {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+// Check people in without reloading the page (falls back to a normal form post without JavaScript).
+document.querySelectorAll("form.js-toggle").forEach((form) => {
+  form.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const btn = form.querySelector("button");
+    btn.disabled = true;
+    try {
+      const res = await fetch(form.action, { method: "POST", body: new FormData(form), headers: { "x-requested-with": "fetch" } });
+      if (!res.ok) throw new Error(res.status);
+      const data = await res.json();
+      btn.classList.toggle("on", data.present);
+      btn.setAttribute("aria-pressed", data.present);
+      btn.textContent = data.present ? "✓ Present" : "Check in";
+      document.getElementById("c-members").textContent = data.counts.members;
+      document.getElementById("c-total").textContent = data.counts.total;
+    } catch (e) {
+      form.submit();
+    } finally {
+      btn.disabled = false;
+    }
+  });
+});
+</script>
+{% endblock %}

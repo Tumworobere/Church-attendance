@@ -1,0 +1,48 @@
+{% extends "registry/base.html" %}
+{% block title %}Visitors · {{ CHURCH_NAME }}{% endblock %}
+{% block content %}
+<div class="panel stack">
+  <form method="get" class="row">
+    <input type="search" name="q" value="{{ q }}" placeholder="Search visitors" style="flex:1 1 220px">
+    <select name="follow_up" style="width:auto;flex:0 1 180px" onchange="this.form.submit()">
+      <option value="">All follow-up states</option>
+      {% for v, label in choices %}<option value="{{ v }}" {% if selected == v %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <button>Search</button>
+    <span class="spacer"></span>
+    <a class="btn" href="{% url 'visitor_import' %}">Upload visitors</a>
+    <a class="btn primary" href="{% url 'visitor_new' %}">+ Register visitor</a>
+  </form>
+  {% if not total %}
+    <div class="empty"><strong>No visitors yet</strong>Register first-timers here, or straight from the Check-in page during a service. You can also <a href="{% url 'visitor_import' %}">upload a list from a spreadsheet</a>.</div>
+  {% elif not visitors %}
+    <div class="empty">No visitors match these filters. <a href="{% url 'visitor_list' %}">Clear filters</a></div>
+  {% else %}
+    <p class="muted" style="margin:0;font-size:.85rem"><a href="{% url 'export_visitors' %}">Export all as CSV</a></p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Name</th><th>Phone</th><th>First visit</th><th>Invited by</th><th class="r">Visits</th><th>Follow-up</th><th></th></tr></thead>
+      <tbody>
+      {% for v in visitors %}
+        <tr>
+          <td><a class="name" href="{% url 'visitor_edit' v.pk %}">{{ v.name }}</a></td>
+          <td class="num">{{ v.phone|default:"—" }}</td>
+          <td class="num">{{ v.first_visit|date:"j M Y" }}</td>
+          <td>{{ v.invited_by|default:"—" }}</td>
+          <td class="r">{{ v.visits }}</td>
+          <td>
+            <form method="post" action="{% url 'visitor_follow_up' v.pk %}">{% csrf_token %}
+              <input type="hidden" name="next" value="{{ request.get_full_path }}">
+              <select name="follow_up" style="width:auto;padding:4px 8px" onchange="this.form.submit()">
+                {% for val, label in choices %}<option value="{{ val }}" {% if v.follow_up == val %}selected{% endif %}>{{ label }}</option>{% endfor %}
+              </select>
+              <noscript><button class="small">Save</button></noscript>
+            </form>
+          </td>
+          <td>{% if v.member %}<a class="chip" href="{% url 'member_edit' v.member.pk %}">Member</a>{% else %}<a class="btn small" href="{% url 'member_new' %}?from_visitor={{ v.pk }}">Make member</a>{% endif %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,9 @@
+venv/
+__pycache__/
+*.pyc
+# Live member records and any copies of them: never commit
+db.sqlite3*
+*.bak*
+*.sqlite3
+.env
+staticfiles/
