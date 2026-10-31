@@ -49,6 +49,7 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
+    'registry.middleware.BranchMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
@@ -124,6 +125,5 @@ LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'dashboard'
 LOGOUT_REDIRECT_URL = 'login'
 
-# Name and branch shown in the page header
+# Name shown in the page header (branches are records, managed in the admin)
 CHURCH_NAME = os.environ.get('CHURCH_NAME', 'Christ Heart Ministries International')
-CHURCH_BRANCH = os.environ.get('CHURCH_BRANCH', 'Kisaasi Branch')

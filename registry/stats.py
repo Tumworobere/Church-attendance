@@ -63,14 +63,16 @@ def member_rates(members, services):
     return rows
 
 
-def absence_streaks(min_missed=3):
-    """Active members who missed the most recent `min_missed`+ services in a row."""
-    services = list(Service.objects.order_by("-date", "-service_type__order").values_list("id", "date"))
+def absence_streaks(branch, min_missed=3):
+    """Active members of `branch` who missed its most recent `min_missed`+ services in a row."""
+    services = list(Service.objects.filter(branch=branch).order_by("-date", "-service_type__order").values_list("id", "date"))
     present = defaultdict(set)
-    for member_id, service_id in Attendance.objects.filter(member__isnull=False).values_list("member_id", "service_id"):
+    for member_id, service_id in Attendance.objects.filter(
+        service__branch=branch, member__isnull=False
+    ).values_list("member_id", "service_id"):
         present[member_id].add(service_id)
     results = []
-    for m in Member.objects.filter(status=Member.Status.ACTIVE):
+    for m in Member.objects.filter(branch=branch, status=Member.Status.ACTIVE):
         missed = 0
         for service_id, date in services:
             if date < m.member_since or service_id in present[m.id]:

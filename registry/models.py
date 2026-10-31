@@ -1,7 +1,36 @@
+import calendar
+
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
 from django.utils import timezone
+
+
+MONTHS = [(i, calendar.month_name[i]) for i in range(1, 13)]
+# Leap-year lengths, so a 29 February birthday is allowed
+DAYS_IN_MONTH = {i: calendar.monthrange(2000, i)[1] for i in range(1, 13)}
+
+
+def birthday_error(day, month):
+    """Why a day/month birthday is invalid, or None if it's fine (both blank is fine)."""
+    if bool(day) != bool(month):
+        return "Choose both the day and the month, or leave both blank."
+    if day and day > DAYS_IN_MONTH[month]:
+        return f"{calendar.month_name[month]} has only {DAYS_IN_MONTH[month]} days."
+    return None
+
+
+class Branch(models.Model):
+    """A church branch. Members, visitors and services each belong to one; ministries and service types are shared."""
+    name = models.CharField(max_length=100, unique=True, help_text="As shown in the header, e.g. Kisaasi Branch")
+
+    class Meta:
+        ordering = ["name"]
+        verbose_name_plural = "branches"
+
+    def __str__(self):
+        return self.name
 
 
 class Ministry(models.Model):
@@ -35,10 +64,14 @@ class Member(models.Model):
         ACTIVE = "active", "Active"
         INACTIVE = "inactive", "Inactive"
 
+    branch = models.ForeignKey(Branch, on_delete=models.PROTECT, related_name="members")
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     gender = models.CharField(max_length=1, choices=Gender.choices, blank=True)
-    date_of_birth = models.DateField(null=True, blank=True)
+    # Birthday without the year: the church records day and month only
+    birth_day = models.PositiveSmallIntegerField(null=True, blank=True, choices=[(d, d) for d in range(1, 32)],
+                                                 verbose_name="Birthday (day)")
+    birth_month = models.PositiveSmallIntegerField(null=True, blank=True, choices=MONTHS, verbose_name="Birthday (month)")
     phone = models.CharField(max_length=30, blank=True)
     email = models.EmailField(blank=True)
     address = models.CharField(max_length=255, blank=True)
@@ -64,6 +97,16 @@ class Member(models.Model):
     def initials(self):
         return (self.first_name[:1] + self.last_name[:1]).upper() or "?"
 
+    @property
+    def birthday(self):
+        """e.g. "18 October", or "" if not recorded."""
+        return f"{self.birth_day} {calendar.month_name[self.birth_month]}" if self.birth_day and self.birth_month else ""
+
+    def clean(self):
+        super().clean()
+        if error := birthday_error(self.birth_day, self.birth_month):
+            raise ValidationError({"birth_day": error})
+
     def last_seen(self):
         att = self.attendances.select_related("service").order_by("-service__date").first()
         return att.service.date if att else None
@@ -75,6 +118,7 @@ class Visitor(models.Model):
         CONTACTED = "contacted", "Contacted"
         JOINED = "joined", "Joined"
 
+    branch = models.ForeignKey(Branch, on_delete=models.PROTECT, related_name="visitors")
     name = models.CharField(max_length=200)
     phone = models.CharField(max_length=30, blank=True)
     email = models.EmailField(blank=True)
@@ -98,6 +142,7 @@ class Visitor(models.Model):
 
 
 class Service(models.Model):
+    branch = models.ForeignKey(Branch, on_delete=models.PROTECT, related_name="services")
     date = models.DateField(default=timezone.localdate)
     service_type = models.ForeignKey(ServiceType, on_delete=models.PROTECT, related_name="services")
     extra_headcount = models.PositiveIntegerField(default=0, help_text="Children or guests not registered individually")
@@ -106,7 +151,7 @@ class Service(models.Model):
 
     class Meta:
         ordering = ["-date", "service_type__order"]
-        constraints = [models.UniqueConstraint(fields=["date", "service_type"], name="unique_service_per_day")]
+        constraints = [models.UniqueConstraint(fields=["branch", "date", "service_type"], name="unique_service_per_day")]
 
     def __str__(self):
         return f"{self.service_type} · {self.date:%d %b %Y}"

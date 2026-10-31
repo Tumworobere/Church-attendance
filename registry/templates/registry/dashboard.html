@@ -31,8 +31,8 @@
 
   <div class="grid2">
     <div class="panel stack"><h2>Birthdays this month</h2>
-      {% if birthdays %}<ul class="list-plain">{% for m in birthdays %}<li><a href="{% url 'member_edit' m.pk %}">{{ m.full_name }}</a><span class="muted num">{{ m.date_of_birth|date:"j M" }}</span></li>{% endfor %}</ul>
-      {% else %}<div class="empty">No birthdays recorded for this month. Add dates of birth to member records to see them here.</div>{% endif %}
+      {% if birthdays %}<ul class="list-plain">{% for m in birthdays %}<li><a href="{% url 'member_edit' m.pk %}">{{ m.full_name }}</a><span class="muted num">{{ m.birthday }}</span></li>{% endfor %}</ul>
+      {% else %}<div class="empty">No birthdays recorded for this month. Add birthdays to member records to see them here.</div>{% endif %}
     </div>
     <div class="panel stack"><h2>Visitors to follow up</h2>
       {% if pending %}<ul class="list-plain">{% for v in pending %}<li><span><a href="{% url 'visitor_edit' v.pk %}">{{ v.name }}</a><br><span class="muted num" style="font-size:.82rem">{{ v.phone|default:"No phone" }}</span></span><span class="muted">{{ v.first_visit|date:"j M Y" }}</span></li>{% endfor %}</ul>

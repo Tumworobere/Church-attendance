@@ -1,5 +1,6 @@
 """Bulk upload of members and visitors from CSV. Each importer's columns match the matching export, so an export can be
 edited and uploaded again (extra columns such as the visitors export's "Visits" are ignored)."""
+import calendar
 import csv
 import io
 import re
@@ -39,6 +40,32 @@ def _date(value):
     return value  # let the form report it as invalid
 
 
+MONTH_NAMES = {n.lower(): i for i in range(1, 13) for n in (calendar.month_name[i], calendar.month_abbr[i])}
+
+
+def _birthday(value):
+    """(day, month) from "18 October", "18th Oct", "October 18", "18/10" or a full date (year dropped);
+    ("", "") if blank; None if unreadable. Impossible days like 31/2 are passed on for the form to explain."""
+    if not value:
+        return "", ""
+    v = value.strip().rstrip(".").lower()
+    if m := re.fullmatch(r"(\d{1,2})\s*[/.\-]\s*(\d{1,2})", v):
+        day, month = int(m[1]), int(m[2])
+    elif m := re.fullmatch(r"(\d{1,2})(?:st|nd|rd|th)?\s+([a-z]+)", v):
+        day, month = int(m[1]), MONTH_NAMES.get(m[2], 0)
+    elif m := re.fullmatch(r"([a-z]+)\.?\s+(\d{1,2})(?:st|nd|rd|th)?", v):
+        day, month = int(m[2]), MONTH_NAMES.get(m[1], 0)
+    else:
+        for fmt in DATE_FORMATS:
+            try:
+                d = datetime.strptime(value.strip(), fmt)
+                return d.day, d.month
+            except ValueError:
+                pass
+        return None
+    return (day, month) if 1 <= month <= 12 and 1 <= day <= 31 else None
+
+
 def _clean(value):
     value = value.strip()
     # Undo the formula guard that views._csv adds on export ("'+256…" -> "+256…"). Older exports also wrote a
@@ -69,8 +96,8 @@ class Importer:
         """(column, required, what to enter) rows for the upload page."""
         raise NotImplementedError
 
-    def setup(self):
-        """Load lookups and the keys of records already in the register."""
+    def setup(self, branch):
+        """Load lookups and the keys of records already in this branch's register."""
         raise NotImplementedError
 
     def prepare(self, data):
@@ -110,12 +137,12 @@ class Importer:
                 raise UploadError(f"Too many rows: upload at most {MAX_ROWS} {self.plural} at a time.")
             yield line, data
 
-    def read(self, upload):
+    def read(self, upload, branch):
         """Return (forms, skipped, errors): valid unsaved forms, names already in the register, and error strings.
         Callers should save nothing if errors is non-empty."""
         forms, skipped, errors = [], [], []
         labels = {f: c for c, f in self.columns.items()}
-        seen = self.setup()
+        seen = self.setup(branch)
         try:
             for line, data in self._rows(upload):
                 row_errors = self.prepare(data)
@@ -139,20 +166,20 @@ class Importer:
 class MemberImporter(Importer):
     noun, plural, form_class = "member", "members", MemberForm
     columns = {
-        "First name": "first_name", "Last name": "last_name", "Gender": "gender", "Date of birth": "date_of_birth",
+        "First name": "first_name", "Last name": "last_name", "Gender": "gender", "Birthday": "birthday",
         "Phone": "phone", "Email": "email", "Address": "address", "Cell": "cell", "Ministry": "ministry",
         "Member since": "member_since", "Status": "status", "Notes": "notes",
     }
-    aliases = {"household": "cell"}  # exports made before the field was renamed
+    aliases = {"household": "cell", "date of birth": "birthday"}  # headers used by older exports
     required = ["First name", "Last name"]
-    date_fields = ["date_of_birth", "member_since"]
+    date_fields = ["member_since"]
 
     def guide(self):
         ministries = [m.name for m in Ministry.objects.all()]
         return [
             ("First name", True, ""), ("Last name", True, ""),
             ("Gender", False, f"{_labels(Member.Gender.choices, ' or ')}, or just the first letter. Can be left blank."),
-            ("Date of birth", False, DATE_HELP), ("Phone", False, PHONE_HELP), ("Email", False, "A valid email address."),
+            ("Birthday", False, "Day and month, e.g. 18 October or 18/10. If a year is included it's ignored."), ("Phone", False, PHONE_HELP), ("Email", False, "A valid email address."),
             ("Address", False, "Any text."), ("Cell", False, "The cell group this member belongs to."),
             ("Ministry", False, f"One of: {', '.join(ministries)}." if ministries else "No ministries yet; add them in the admin first."),
             ("Member since", False, "A date, as above. Left blank, it's set to today."),
@@ -160,15 +187,20 @@ class MemberImporter(Importer):
             ("Notes", False, "Any text."),
         ]
 
-    def setup(self):
+    def setup(self, branch):
         self.genders, self.statuses = _choices(Member.Gender.choices), _choices(Member.Status.choices)
         self.ministries = {name.lower(): pk for pk, name in Ministry.objects.values_list("pk", "name")}
         self.today = timezone.localdate().isoformat()
         return {self.key({"first_name": f, "last_name": l, "phone": p})
-                for f, l, p in Member.objects.values_list("first_name", "last_name", "phone")}
+                for f, l, p in Member.objects.filter(branch=branch).values_list("first_name", "last_name", "phone")}
 
     def prepare(self, data):
         errors = super().prepare(data)
+        day_month = _birthday(data.pop("birthday", ""))
+        if day_month is None:
+            errors["birthday"] = "write the birthday as day and month, e.g. 18 October or 18/10."
+        else:
+            data["birthday_0"], data["birthday_1"] = day_month  # the form's day and month pickers
         if data.get("gender"):
             data["gender"] = self.genders.get(data["gender"].lower(), data["gender"])
         data["status"] = self.statuses.get(data.get("status", "").lower(), data.get("status")) or Member.Status.ACTIVE
@@ -205,10 +237,10 @@ class VisitorImporter(Importer):
             ("Notes", False, "Prayer requests or other notes."),
         ]
 
-    def setup(self):
+    def setup(self, branch):
         self.follow_ups = _choices(Visitor.FollowUp.choices)
         self.today = timezone.localdate().isoformat()
-        return {self.key({"name": n, "phone": p}) for n, p in Visitor.objects.values_list("name", "phone")}
+        return {self.key({"name": n, "phone": p}) for n, p in Visitor.objects.filter(branch=branch).values_list("name", "phone")}
 
     def prepare(self, data):
         errors = super().prepare(data)

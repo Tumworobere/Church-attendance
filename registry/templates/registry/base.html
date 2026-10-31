@@ -12,13 +12,25 @@
 <body>
 <div class="wrap">
   <header class="top">
-    <a href="{% url 'dashboard' %}" class="brand">
-      <img src="{% static 'registry/img/logo.png' %}" alt="" width="60" height="60">
-      <span class="stack" style="gap:2px">
-        <h1>{{ CHURCH_NAME }}</h1>
-        <span class="eyebrow">{% if CHURCH_BRANCH %}{{ CHURCH_BRANCH }} · {% endif %}Member &amp; attendance register</span>
-      </span>
-    </a>
+    <div class="brand">
+      <a href="{% url 'dashboard' %}"><img src="{% static 'registry/img/logo.png' %}" alt="Home" width="60" height="60"></a>
+      <div class="stack" style="gap:4px;min-width:0">
+        <a href="{% url 'dashboard' %}"><h1>{{ CHURCH_NAME }}</h1></a>
+        <div class="row eyebrow branch-row">
+          {% if user.is_authenticated %}
+          <form method="post" action="{% url 'branch_switch' %}" class="branch-switch">{% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.path }}">
+            <label for="branch-select" class="sr-only">Branch</label>
+            <select id="branch-select" name="branch" onchange="this.form.submit()">
+              {% for b in branches %}<option value="{{ b.pk }}" {% if b.pk == branch.pk %}selected{% endif %}>{{ b }}</option>{% endfor %}
+            </select>
+            <noscript><button class="small">Switch</button></noscript>
+          </form>
+          {% elif branch %}<span>{{ branch }}</span>{% endif %}
+          <span>Member &amp; attendance register</span>
+        </div>
+      </div>
+    </div>
     {% if user.is_authenticated %}
     <div class="row">
       <span class="muted">{{ user.get_username }}</span>
